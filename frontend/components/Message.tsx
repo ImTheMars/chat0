@@ -7,6 +7,9 @@ import MessageControls from './MessageControls';
 import { UseChatHelpers } from '@ai-sdk/react';
 import MessageEditor from './MessageEditor';
 import MessageReasoning from './MessageReasoning';
+import MessageStats from './MessageStats';
+import RetryButton from './RetryButton';
+import { UIMessageWithStats } from '@/frontend/routes/Thread';
 
 function PureMessage({
   threadId,
@@ -16,14 +19,18 @@ function PureMessage({
   isStreaming,
   registerRef,
   stop,
+  retryWithModel,
+  messageStats,
 }: {
   threadId: string;
-  message: UIMessage;
+  message: UIMessage | UIMessageWithStats;
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   isStreaming: boolean;
   registerRef: (id: string, ref: HTMLDivElement | null) => void;
   stop: UseChatHelpers['stop'];
+  retryWithModel?: (model: string) => void;
+  messageStats?: { startTime: number; model: string; cost: number; tokens: number; duration: number; tokensPerSecond: number };
 }) {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
@@ -85,14 +92,32 @@ function PureMessage({
             <div key={key} className="group flex flex-col gap-2 w-full">
               <MarkdownRenderer content={part.text} id={message.id} />
               {!isStreaming && (
-                <MessageControls
-                  threadId={threadId}
-                  content={part.text}
-                  message={message}
-                  setMessages={setMessages}
-                  reload={reload}
-                  stop={stop}
-                />
+                <div className="flex items-center justify-between gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <div className="flex items-center gap-2">
+                    <MessageControls
+                      threadId={threadId}
+                      content={part.text}
+                      message={message}
+                      setMessages={setMessages}
+                      reload={reload}
+                      stop={stop}
+                    />
+                    {retryWithModel && messageStats && (
+                      <RetryButton 
+                        onRetry={retryWithModel}
+                        currentModel={messageStats.model}
+                      />
+                    )}
+                  </div>
+                  {messageStats && (
+                    <MessageStats
+                      model={messageStats.model}
+                      duration={messageStats.duration}
+                      cost={messageStats.cost}
+                      tokensPerSecond={messageStats.tokensPerSecond}
+                    />
+                  )}
+                </div>
               )}
             </div>
           );

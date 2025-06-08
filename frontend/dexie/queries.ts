@@ -2,6 +2,7 @@ import { db } from './db';
 import { UIMessage } from 'ai';
 import { v4 as uuidv4 } from 'uuid';
 import Dexie from 'dexie';
+import { MessageStats } from './db';
 
 export const getThreads = async () => {
   return await db.threads.orderBy('lastMessageAt').reverse().toArray();
@@ -55,7 +56,7 @@ export const getMessagesByThreadId = async (threadId: string) => {
     .toArray();
 };
 
-export const createMessage = async (threadId: string, message: UIMessage) => {
+export const createMessage = async (threadId: string, message: UIMessage, stats?: MessageStats) => {
   return await db.transaction('rw', [db.messages, db.threads], async () => {
     await db.messages.add({
       id: message.id,
@@ -64,6 +65,7 @@ export const createMessage = async (threadId: string, message: UIMessage) => {
       role: message.role,
       content: message.content,
       createdAt: message.createdAt || new Date(),
+      stats,
     });
 
     await db.threads.update(threadId, {

@@ -1,9 +1,10 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { streamText, smoothStream } from 'ai';
 import { headers } from 'next/headers';
-import { getModelConfig, AIModel } from '@/lib/models';
+import { getModelConfig, AIModel, AI_MODELS } from '@/lib/models';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const maxDuration = 60;
@@ -13,9 +14,38 @@ export async function POST(req: NextRequest) {
     const { messages, model } = await req.json();
     const headersList = await headers();
 
-    const modelConfig = getModelConfig(model as AIModel);
+    // Check if it's a predefined model or custom model
+    let modelConfig;
+    let isCustomModel = false;
+    
+    try {
+      modelConfig = getModelConfig(model as AIModel);
+    } catch {
+      // It's a custom model, assume it's OpenRouter
+      isCustomModel = true;
+      modelConfig = {
+        modelId: model,
+        provider: 'openrouter' as const,
+        headerKey: 'X-OpenRouter-API-Key',
+        category: 'Custom',
+        inputPrice: 0,
+        outputPrice: 0,
+        contextWindow: 'Unknown',
+        description: 'Custom OpenRouter model',
+      };
+    }
 
     const apiKey = headersList.get(modelConfig.headerKey) as string;
+
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: `API key required for ${modelConfig.provider}` }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     let aiModel;
     switch (modelConfig.provider) {
@@ -27,6 +57,19 @@ export async function POST(req: NextRequest) {
       case 'openai':
         const openai = createOpenAI({ apiKey });
         aiModel = openai(modelConfig.modelId);
+        break;
+
+      case 'anthropic':
+        const anthropic = createAnthropic({ apiKey });
+        aiModel = anthropic(modelConfig.modelId);
+        break;
+
+      case 'deepseek':
+        const deepseek = createOpenAI({ 
+          apiKey,
+          baseURL: 'https://api.deepseek.com/v1'
+        });
+        aiModel = deepseek(modelConfig.modelId);
         break;
 
       case 'openrouter':

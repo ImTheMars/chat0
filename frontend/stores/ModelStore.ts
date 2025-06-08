@@ -3,14 +3,15 @@ import { persist } from 'zustand/middleware';
 import { AIModel, getModelConfig, ModelConfig } from '@/lib/models';
 
 type ModelStore = {
-  selectedModel: AIModel;
-  setModel: (model: AIModel) => void;
-  getModelConfig: () => ModelConfig;
+  selectedModel: string; // Changed to string to support custom models
+  setModel: (model: string) => void;
+  getModelConfig: () => ModelConfig | null;
+  isCustomModel: () => boolean;
 };
 
 type StoreWithPersist = Mutate<
   StoreApi<ModelStore>,
-  [['zustand/persist', { selectedModel: AIModel }]]
+  [['zustand/persist', { selectedModel: string }]]
 >;
 
 export const withStorageDOMEvents = (store: StoreWithPersist) => {
@@ -38,7 +39,32 @@ export const useModelStore = create<ModelStore>()(
 
       getModelConfig: () => {
         const { selectedModel } = get();
-        return getModelConfig(selectedModel);
+        // Check if it's a predefined model
+        try {
+          return getModelConfig(selectedModel as AIModel);
+        } catch {
+          // For custom OpenRouter models, return a basic config
+          return {
+            modelId: selectedModel,
+            provider: 'openrouter' as const,
+            headerKey: 'X-OpenRouter-API-Key',
+            category: 'Custom',
+            inputPrice: 0,
+            outputPrice: 0,
+            contextWindow: 'Unknown',
+            description: 'Custom OpenRouter model',
+          };
+        }
+      },
+
+      isCustomModel: () => {
+        const { selectedModel } = get();
+        try {
+          getModelConfig(selectedModel as AIModel);
+          return false;
+        } catch {
+          return true;
+        }
       },
     }),
     {

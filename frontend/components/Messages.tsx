@@ -5,6 +5,7 @@ import { UseChatHelpers } from '@ai-sdk/react';
 import equal from 'fast-deep-equal';
 import MessageLoading from './ui/MessageLoading';
 import Error from './Error';
+import { UIMessageWithStats } from '@/frontend/routes/Thread';
 
 function PureMessages({
   threadId,
@@ -15,15 +16,17 @@ function PureMessages({
   error,
   stop,
   registerRef,
+  retryWithModel,
 }: {
   threadId: string;
-  messages: UIMessage[];
+  messages: UIMessageWithStats[];
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   status: UseChatHelpers['status'];
   error: UseChatHelpers['error'];
   stop: UseChatHelpers['stop'];
   registerRef: (id: string, ref: HTMLDivElement | null) => void;
+  retryWithModel?: (model: string) => void;
 }) {
   return (
     <section className="flex flex-col space-y-12">
@@ -37,6 +40,8 @@ function PureMessages({
           reload={reload}
           registerRef={registerRef}
           stop={stop}
+          retryWithModel={retryWithModel}
+          messageStats={message.stats}
         />
       ))}
       {status === 'submitted' && <MessageLoading />}
