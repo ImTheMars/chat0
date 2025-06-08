@@ -13,6 +13,33 @@ import { Button } from './ui/button';
 import { useAPIKeyStore } from '@/frontend/stores/APIKeyStore';
 import { toast } from 'sonner';
 
+function getCompletionConfig(
+  getKey: (key: 'google' | 'openai' | 'openrouter') => string | undefined
+) {
+  const openrouterKey = getKey('openrouter');
+  const openaiKey = getKey('openai');
+  const googleKey = getKey('google');
+
+  let headers = {};
+  if (openrouterKey) {
+    headers = {
+      'X-Model-Provider': 'openrouter',
+      'X-OpenRouter-API-Key': openrouterKey,
+    };
+  } else if (openaiKey) {
+    headers = { 'X-Model-Provider': 'openai', 'X-OpenAI-API-Key': openaiKey };
+  } else if (googleKey) {
+    headers = { 'X-Model-Provider': 'google', 'X-Google-API-Key': googleKey };
+  } else {
+    return null;
+  }
+
+  return {
+    api: '/api/completion',
+    headers,
+  };
+}
+
 export default function MessageEditor({
   threadId,
   message,
@@ -33,12 +60,12 @@ export default function MessageEditor({
   const [draftContent, setDraftContent] = useState(content);
   const getKey = useAPIKeyStore((state) => state.getKey);
 
+  const completionConfig = getCompletionConfig(getKey);
+
   const { complete } = useCompletion({
-    api: '/api/completion',
-    ...(getKey('google') && {
-      headers: { 'X-Google-API-Key': getKey('google')! },
-    }),
+    ...completionConfig,
     onResponse: async (response) => {
+      if (!completionConfig) return;
       try {
         const payload = await response.json();
 
@@ -85,12 +112,14 @@ export default function MessageEditor({
         return messages;
       });
 
-      complete(draftContent, {
-        body: {
-          messageId: updatedMessage.id,
-          threadId,
-        },
-      });
+      if (completionConfig) {
+        complete(draftContent, {
+          body: {
+            messageId: updatedMessage.id,
+            threadId,
+          },
+        });
+      }
       setMode('view');
 
       // stop the current stream if any
