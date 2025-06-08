@@ -10,15 +10,41 @@ interface MessageSummaryPayload {
   threadId: string;
 }
 
+function getCompletionConfig(
+  getKey: (key: 'google' | 'openai' | 'openrouter') => string | undefined
+) {
+  const openrouterKey = getKey('openrouter');
+  const openaiKey = getKey('openai');
+  const googleKey = getKey('google');
+
+  let headers = {};
+  if (openrouterKey) {
+    headers = {
+      'X-Model-Provider': 'openrouter',
+      'X-OpenRouter-API-Key': openrouterKey,
+    };
+  } else if (openaiKey) {
+    headers = { 'X-Model-Provider': 'openai', 'X-OpenAI-API-Key': openaiKey };
+  } else if (googleKey) {
+    headers = { 'X-Model-Provider': 'google', 'X-Google-API-Key': googleKey };
+  } else {
+    return null;
+  }
+
+  return {
+    api: '/api/completion',
+    headers,
+  };
+}
+
 export const useMessageSummary = () => {
   const getKey = useAPIKeyStore((state) => state.getKey);
+  const completionConfig = getCompletionConfig(getKey);
 
   const { complete, isLoading } = useCompletion({
-    api: '/api/completion',
-    ...(getKey('google') && {
-      headers: { 'X-Google-API-Key': getKey('google')! },
-    }),
+    ...completionConfig,
     onResponse: async (response) => {
+      if (!completionConfig) return;
       try {
         const payload: MessageSummaryPayload = await response.json();
 
