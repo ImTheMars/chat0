@@ -125,3 +125,13 @@ export const getMessageSummaries = async (threadId: string) => {
     .between([threadId, Dexie.minKey], [threadId, Dexie.maxKey])
     .toArray();
 };
+
+export const searchMessages = async (query: string) => {
+  if (!query) {
+    return [];
+  }
+  return await db.messages
+    .where('content')
+    .startsWithIgnoreCase(query)
+    .toArray();
+};

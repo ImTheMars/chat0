@@ -34,7 +34,7 @@ const db = new Dexie('chat0') as Dexie & {
 
 db.version(1).stores({
   threads: 'id, title, updatedAt, lastMessageAt',
-  messages: 'id, threadId, createdAt, [threadId+createdAt]',
+  messages: 'id, threadId, createdAt, [threadId+createdAt], content',
   messageSummaries: 'id, threadId, messageId, createdAt, [threadId+createdAt]',
 });
 
